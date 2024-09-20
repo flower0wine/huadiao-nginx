@@ -1,0 +1,39 @@
+name: Publish Nginx Configuration
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SERVER_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Upload nginx.conf
+        env:
+          DEPLOY_SERVER: ${{ secrets.SERVER_IP }}
+          DEPLOY_USER: ${{ secrets.SERVER_USERNAME }}
+        run: |
+          scp -o StrictHostKeyChecking=no nginx.conf $DEPLOY_USER@$DEPLOY_SERVER:/etc/nginx/hosts/vue_server.host
+
+      - name: Restart Nginx
+        env:
+          DEPLOY_SERVER: ${{ secrets.SERVER_IP }}
+          DEPLOY_USER: ${{ secrets.SERVER_USERNAME }}
+        run: |
+          ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_SERVER << EOF
+          # Restart Nginx
+          nginx -s reload
+          EOF
